@@ -10,6 +10,7 @@ from collections import Counter
 from sklearn.linear_model import Lasso
 from sklearn.metrics import mean_squared_error as mse
 from collections import defaultdict, Counter
+from datetime import timedelta
 
 class Get_age(BaseEstimator, TransformerMixin):
     def fit(self, X, y):
@@ -149,7 +150,7 @@ def rmsle(y_hat, y):
 if __name__ == '__main__':
     print('-'*50,'\n','Running Linear Regression.  Lets go baby','\n','-'*50,)
     print('-'*50,'\n','Loading Data','\n','-'*50,)
-    df = pd.read_csv('data/Train.csv',low_memory = False)
+    df = pd.read_csv('data/Train.csv',low_memory = False,parse_dates = ['saledate'])
     df = df.set_index('SalesID').sort_index()
     y = df.SalePrice
 
