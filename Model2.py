@@ -11,6 +11,7 @@ from sklearn.linear_model import Lasso
 from sklearn.metrics import mean_squared_error as mse
 from collections import defaultdict, Counter
 from datetime import timedelta
+from numpy.random import randint
 
 class Get_age(BaseEstimator, TransformerMixin):
     def fit(self, X, y):
@@ -18,7 +19,7 @@ class Get_age(BaseEstimator, TransformerMixin):
         return self
     def transform(self, X):
         #print('-'*50,'\n','Transforming Age','\n','-'*50)
-        Sale_date = (X.saledate)#pd.to_datetime
+        Sale_date = pd.to_datetime(X.saledate)#
         X['Calculated_Age'] = Sale_date.dt.year- X['YearMade']
         X.loc[X['YearMade_Fixed']== 1,'Calculated_Age'] = 5
         return X
@@ -75,16 +76,19 @@ class mean_price(BaseEstimator, TransformerMixin):
             sd = pd.to_datetime(X.loc[i,'saledate'])
             Means = []
             timed = []
-            for item in self.d[X.loc[i,'ModelID']].items():
-                if (item[0] < sd):
-                    td = (sd - item[0]).total_seconds()
-                    Means.append(np.mean(item[1]))
-                    timed.append(int(td))
-            timed = list(reversed(timed))
-            timed = np.array(timed)/31557600
-            weights = np.exp(timed)/np.sum(np.exp(timed))
-            Mean = np.mean(np.array(Means)*np.array(weights))
-            X.loc[i,'MeanPrice'] = Mean
+            if X.loc[i,'ModelID'] in self.d:
+                for item in self.d[X.loc[i,'ModelID']].items():
+                    if (item[0] < sd):
+                        td = (sd - item[0]).total_seconds()
+                        Means.append(np.mean(item[1]))
+                        timed.append(int(td))
+                timed = list(reversed(timed))
+                timed = np.array(timed)/31557600
+                weights = np.exp(timed)/np.sum(np.exp(timed))
+                Mean = np.mean(np.array(Means)*np.array(weights))
+                X.loc[i,'MeanPrice'] = Mean
+            else:
+                X.loc[i,'MeanPrice'] = self.p
             if i%10000 == 0:
                 print(i)
 
@@ -159,10 +163,10 @@ if __name__ == '__main__':
         ('Replace_outliers', Replace_outliers()),
         ('mean_price',mean_price()),
         ('Get_age',Get_age()),
-        ('Get_dummies',Get_dummies()),
         ('Only_cols', Only_cols()),
         ('lm', Lasso(alpha=0))
         ])
+        #('Get_dummies',Get_dummies()),
     params = {'lm__alpha':.5}
     clf = p.fit(df, y)
 
@@ -184,7 +188,7 @@ if __name__ == '__main__':
 
     test_solution = pd.read_csv('data/do_not_open/test_soln.csv')
     test_solution.set_index('SalesID')
-    results[alpha] = (rmsle(test_solution.SalePrice,test_predictions))
+    results = (rmsle(test_solution.SalePrice,test_predictions))
     print(results)
 
     #
