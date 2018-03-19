@@ -40,13 +40,13 @@ class Replace_outliers(BaseEstimator, TransformerMixin):
 
 class mean_price(BaseEstimator, TransformerMixin):
     def fit(self,X,y):
-        #print('Mean Price\n','-'*50)
+        # print('Mean Price\n','-'*50)
         # Model = X['ModelID']
         # d = {}
         # for model,num in Counter(Model).items():
         #     Mod_df = (X[X['ModelID'] == model].SalePrice)
         #     d[model] = np.mean(Mod_df)
-        #
+
         Model = X['ModelID']
         d = {}
         for model,num in Counter(Model).items():
@@ -61,7 +61,7 @@ class mean_price(BaseEstimator, TransformerMixin):
         self.p = np.mean(X.SalePrice)
         return self
     def transform(self,X):
-        print('-'*50,'\n','Transforming Mean Price','\n','-'*50)
+        # print('-'*50,'\n','Transforming Mean Price','\n','-'*50)
         # X['MeanPrice'] = 0
         # for model in self.d:
         #     idx = X['ModelID'] == model
@@ -81,12 +81,17 @@ class mean_price(BaseEstimator, TransformerMixin):
                     if (item[0] < sd):
                         td = (sd - item[0]).total_seconds()
                         Means.append(np.mean(item[1]))
-                        timed.append(int(td))
-                timed = list(reversed(timed))
-                timed = np.array(timed)/31557600
-                weights = np.exp(timed)/np.sum(np.exp(timed))
-                Mean = np.mean(np.array(Means)*np.array(weights))
-                X.loc[i,'MeanPrice'] = Mean
+                        #timed.append(int(td))
+                #timed = list(reversed(timed))
+                #timed = np.array(timed)/31557600
+                #weights = np.exp(timed)/np.sum(np.exp(timed))
+                if len(Means) > 0:
+                    x = np.linspace(1,len(Means),len(Means))
+                    Mean = np.average(np.array(Means), axis=None, weights=list(reversed(x)))
+                    X.loc[i,'MeanPrice']= Mean
+                else:
+                #Mean = np.mean(np.array(Means)*list(reversed(x)))
+                    X.loc[i,'MeanPrice']= self.p
             else:
                 X.loc[i,'MeanPrice'] = self.p
             if i%10000 == 0:
@@ -94,25 +99,48 @@ class mean_price(BaseEstimator, TransformerMixin):
 
         cond = np.isnan(X.MeanPrice)
         X.loc[cond,'MeanPrice']  = self.p
-        X['MeanPrice2'] = 0
+        # X['MeanPrice2'] = 0
         return X
 
 class Get_dummies(BaseEstimator, TransformerMixin):
     def fit(self,X,y):
-        S = pd.get_dummies(X['state'])
-
-        X = X.join(S)
-        self.colum = np.array(X.columns)
+        ProductSize = X.ProductSize
+        ProductSize[ProductSize == 'Large'] = 6
+        ProductSize[ProductSize == 'Large / Medium'] = 5
+        ProductSize[ProductSize == 'Medium'] = 4
+        ProductSize[ProductSize == 'Small'] = 3
+        ProductSize[ProductSize == 'Compact'] = 2
+        ProductSize[ProductSize == 'Mini'] = 1
+        ProductSize[ProductSize == 'None or Unspecified'] = np.nan
+        m = ProductSize[~np.isnan(np.array(ProductSize, dtype=np.float64))].mean()
+        self.m = m
         return self
+
+
+        # S = pd.get_dummies(X['state'])
+        # X = X.join(S)
+        # self.colum = np.array(X.columns)
+        # return self
     def transform(self,X):
         #print('-'*50,'\n','Transforming dummies','\n','-'*50)
-        S = pd.get_dummies(X['state'])
-        X = X.join(S)
-
-        for i in range(5,X.shape[1]):
-            if list(X.columns[i])  != list(self.colum[i]):
-                X.insert(i, self.colum[i], 0)
+        ProductSize = X.ProductSize
+        ProductSize[ProductSize == 'Large'] = 6
+        ProductSize[ProductSize == 'Large / Medium'] = 5
+        ProductSize[ProductSize == 'Medium'] = 4
+        ProductSize[ProductSize == 'Small'] = 3
+        ProductSize[ProductSize == 'Compact'] = 2
+        ProductSize[ProductSize == 'Mini'] = 1
+        ProductSize[ProductSize == 'None or Unspecified'] = np.nan
+        ProductSize[np.isnan(np.array(ProductSize, dtype=np.float64))]= self.m
+        X['ProductSize'] = ProductSize
         return X
+
+        # S = pd.get_dummies(X['state'])
+        # X = X.join(S)
+        # for i in range(5,X.shape[1]):
+        #     if list(X.columns[i])  != list(self.colum[i]):
+        #         X.insert(i, self.colum[i], 0)
+        # return X
 
         #X = X.set_index('SalesID')[self.columns].sort_index()
 
@@ -123,7 +151,7 @@ class Only_cols(BaseEstimator, TransformerMixin):
         return self
     def transform(self,X):
         #print('-'*50,'\n','Transforming Columns','\n','-'*50)
-        c = ['MeanPrice','Calculated_Age']
+        c = ['MeanPrice','Calculated_Age','ProductSize']
        #  c = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
        # 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
        # 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
@@ -148,7 +176,7 @@ def rmsle(y_hat, y):
     predictions and true ys.
     """
 
-    log_diff = np.log(y_hat+100) - np.log(y+100)
+    log_diff = np.log(y_hat) - np.log(y)
     return np.sqrt(np.mean(log_diff**2))
 
 if __name__ == '__main__':
@@ -163,8 +191,9 @@ if __name__ == '__main__':
         ('Replace_outliers', Replace_outliers()),
         ('mean_price',mean_price()),
         ('Get_age',Get_age()),
+        ('Get_dummies',Get_dummies()),
         ('Only_cols', Only_cols()),
-        ('lm', Lasso(alpha=0))
+        ('lm', Lasso(alpha=2154.4346900318865))
         ])
         #('Get_dummies',Get_dummies()),
     params = {'lm__alpha':.5}
